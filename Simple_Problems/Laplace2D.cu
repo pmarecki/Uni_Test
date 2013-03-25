@@ -38,12 +38,13 @@ typedef uint32_t uint;
 
 
 //Matrices being operated on
-const int kTileSize = 32;               //all problems will be tiled
-const int kMatrixWidth = 8192;   //assume square matrices of this size
-const int kSquareSize = kMatrixWidth * kMatrixWidth;
-inline __host__ __device__ int eM(int x, int y){
-  uint position = x + y*kMatrixWidth;
-  position %= kMatrixWidth;
+const int TSIZE = 32;               //all problems will be tiled
+const int MSIZE = 8192;   //assume square matrices of this size
+const int MSSIZE = MSIZE * MSIZE;
+
+inline __host__ __device__ int pos(int x, int y){
+  uint position = x + y*MSIZE;
+  position %= MSIZE;
   return position;
 }
 
@@ -61,54 +62,54 @@ __global__ void Laplace(const float *A, const float *K, float *DDA);
 int main(void) {
   // Allocation
   float *hA, *hDDA;              //allocated on host
-  hA        = new float[kSquareSize];
-  hDDA      = new float[kSquareSize];
+  hA        = new float[MSSIZE];
+  hDDA      = new float[MSSIZE];
   float LaplaceKernel[] = { 0,0,-1,0,0,  0,0,16,0,0,  -1,16,-60,16,-1,
                             0,0,-1,0,0,  0,0,16,0,0};
   REP(i, kKernelSize * kKernelSize)
     LaplaceKernel[2] /= 12.0;
 
   float *A, *Kernel, *DDA;                 //allocated on GPU
-  cudaMalloc(&A, kSquareSize * 4);
+  cudaMalloc(&A, MSSIZE * 4);
   cudaMalloc(&Kernel, kKernelSize * kKernelSize * 4);
-  cudaMalloc(&DDA, kSquareSize * 4);
-  dim3 blocks(kMatrixWidth / kTileSize, kMatrixWidth / kTileSize);
-  dim3 threads(kTileSize, kTileSize);   //1024 threads; standard configuration
+  cudaMalloc(&DDA, MSSIZE * 4);
+  dim3 blocks(MSIZE / TSIZE, MSIZE / TSIZE);
+  dim3 threads(TSIZE, TSIZE);   //1024 threads; standard configuration
 
   printf("Computing Laplace A; A.width=%i, Kernel.width=%i\n",
-      kMatrixWidth, kKernelSize);
+      MSIZE, kKernelSize);
   // Filling
   srand(12);
-  for(int i=0; i<kSquareSize; ++i) {
+  for(int i=0; i<MSSIZE; ++i) {
     hA[i] = (rand() % 100 - 50) / 50.F;   //small mixed-size numbers
   }
   PosixStoper xx;
-  cudaMemcpy(A, hA, kSquareSize * 4, cudaMemcpyHostToDevice);
+  cudaMemcpy(A, hA, MSSIZE * 4, cudaMemcpyHostToDevice);
   cudaMemcpy(Kernel, LaplaceKernel, kKernelSize * kKernelSize * 4,
       cudaMemcpyHostToDevice);
   xx.Snap(); printf("H2D copy time=\t%3.2f[msec]\n",xx.LastDt()/1000);
   Laplace<<<blocks, threads>>>(A, Kernel, DDA);
   cudaDeviceSynchronize();
   xx.Snap(); printf("GPU exec time=\t%3.2f[msec]\n",xx.LastDt()/1000);
-  cudaMemcpy(hDDA, DDA, kSquareSize * 4, cudaMemcpyDeviceToHost);
+  cudaMemcpy(hDDA, DDA, MSSIZE * 4, cudaMemcpyDeviceToHost);
 
-  float *htest = new float[kSquareSize];          //test results
-  bzero(htest, kSquareSize * 4);
+  float *htest = new float[MSSIZE];          //test results
+  bzero(htest, MSSIZE * 4);
   PosixStoper yy;
-  for(int x=0; x<kMatrixWidth; ++x)
-    for(int y=0; y<kMatrixWidth; ++y)
+  for(int x=0; x<MSIZE; ++x)
+    for(int y=0; y<MSIZE; ++y)
     {
       for(int dx=-kBorder; dx<kBorder; ++dx)
         for(int dy=-kBorder; dy<kBorder; ++dy)
-          htest[eM(x,y)] += hA[eM(x+dx,y+dy)] * LaplaceKernel[eK(dx,dy)];
+          htest[pos(x,y)] += hA[pos(x+dx,y+dy)] * LaplaceKernel[eK(dx,dy)];
     }
   yy.Snap(); printf("CPUtime=\t%3.2f[msec]\n",yy.LastDt()/1000);
 
   //Comparison
   int z=0;
-  for(int x=0; x<kMatrixWidth; ++x)
-    for(int y=0; y<kMatrixWidth; ++y)
-      if (fabs(htest[eM(x,y)] - hDDA[eM(x,y)]) > 0.1) {
+  for(int x=0; x<MSIZE; ++x)
+    for(int y=0; y<MSIZE; ++y)
+      if (fabs(htest[pos(x,y)] - hDDA[pos(x,y)]) > 0.1) {
         ++z;
 //        printf("ERR T[%i,%i]=%i\t C=%i\n", x,y, htest[x + y * kMatrixWidth],
 //            hC[x + y * kMatrixWidth]);
@@ -133,9 +134,9 @@ __global__ void Laplace(const float *A, const float *Kernel, float *DD) {
   int ty = threadIdx.y;
   int x = bx * blockDim.x + tx;
   int y = by * blockDim.y + ty;
-  DD[eM(x,y)]=0;
+  DD[pos(x,y)]=0;
   for(int dx=-kBorder; dx<kBorder; ++dx)
     for(int dy=-kBorder; dy<kBorder; ++dy)
-      DD[eM(x,y)] += A[eM(x+dx,y+dy)] * Kernel[eK(dx,dy)];
+      DD[pos(x,y)] += A[pos(x+dx,y+dy)] * Kernel[eK(dx,dy)];
 
 }

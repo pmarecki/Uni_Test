@@ -11,11 +11,9 @@
  *  @note For CUDA user must #define XGPU
  *  @note On Linux compile with `-lrt`
  *
- *  Version 1.0
+ *  Version 1.1
  *
  */
-
- 
 //    Usage (for all stopers):
 //      PosixStoper xx;
 //      /* some work */
@@ -23,7 +21,7 @@
 //      //cout << xx.LastDt();
 //      xx.Print();
 
-#define MAX_NUMBER_SNAPS 10000 //maximum no. of time-measurements per stoper
+#define MAX_NUMBER_SNAPS 1000 //maximum no. of time-measurements per stoper
 
 
 #ifndef STOPPER_H_
@@ -62,13 +60,19 @@ public:
     virtual float Diff(int t2, int t1) { return t2 - t1;}
   
     virtual float LastDt() {  //Must have measured >=2 values.
-    return (position_ < 2) ?  0 : Diff(position_ - 1, position_ - 2); 
-  }
+      return (position_ < 2) ?  0 : Diff(position_ - 1, position_ - 2);
+    }
     void Print(void) {
-    if (position_ == 0) return;
-    for(int i=1; i < position_; i++) 
-      printf("[%i:%i]\t=%6.3f %s\n", i-1, i, Diff(i, i - 1), unit_name_);
-  }
+      if (position_ == 0) return;
+      for(int i = 1; i < position_; i++)
+        printf("[%i:%i]\t=%6.3f %s\n", i - 1, i, Diff(i, i - 1), unit_name_);
+    }
+    void PrintDt(void) {
+      if (position_ == 0) return;
+        printf("Time: \t%6.3f [msec]\n", LastDt() / 1000);
+    }
+
+
 protected:
   int position_;
   char unit_name_[5];

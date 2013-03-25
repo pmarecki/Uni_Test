@@ -4,6 +4,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <cblas.h>
+/**
+ *  Compile via: "g++ test_lapack.cc -lblas -llapack"
+ */
+
 // See LAPACK reference for explanation.
 extern "C" double dnrm2_(int *n, double *x, int* incx);  //Euclidean norm
 extern "C" void dgesv_(int *n, int *nrhs, double *A, int *lda, int *ipiv,
