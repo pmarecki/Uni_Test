@@ -1,4 +1,4 @@
-
+//See also:http://eigen.tuxfamily.org/dox/group__TutorialAdvancedInitialization.html
 void EigenInterface::doIt() {
 //  MatrixXd A = MatrixXd::Random(6,6);
 //  cout << "Here is a random 6x6 matrix, A:" << endl << A << endl << endl;
